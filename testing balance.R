@@ -1,5 +1,6 @@
-# Regress attrition on covariates
-fit = lm(is.na(Yc) ~ Zdesign*X4 + as.factor(block), df)
+
+# Regress treatment on covariates
+fit = lm(Zdesign ~ X4 + as.factor(block), df)
 
 # Obtain observed heteroskedasticity-robust Wald statistic
 # See Wooldridge (2010), p. 62
@@ -22,7 +23,7 @@ for(i in 1:sims){
   Z_sim = (df %>%
              group_by(b) %>%
              mutate(Z_sim = sample(Zdesign)))$Z_sim
-  fit_sim = lm(is.na(Yc) ~ Z_sim*X4 + as.factor(block), df)
+  fit_sim = lm(Z_sim ~ X4 + as.factor(block), df)
   
   Rbeta.hat = coef(fit_sim)[-1]
   RVR = vcovHC(fit_sim, type = 'HC0')[-1,-1]
@@ -34,8 +35,8 @@ pc <- mean(W_sims >= W_obs)
 pc
 
 
-# Regress attrition on covariates
-fit = lm(is.na(Yb) ~ Zdesign*X4 + as.factor(block), df)
+# Regress treatment on covariates
+fit = lm(Zdesign ~ X4 + as.factor(block), df)
 
 # Obtain observed heteroskedasticity-robust Wald statistic
 # See Wooldridge (2010), p. 62
@@ -58,7 +59,7 @@ for(i in 1:sims){
   Z_sim = (df %>%
              group_by(b) %>%
              mutate(Z_sim = sample(Zdesign)))$Z_sim
-  fit_sim = lm(is.na(Yb) ~ Z_sim*X4 + as.factor(block), df)
+  fit_sim = lm(Z_sim ~ X4 + as.factor(block), df)
   
   Rbeta.hat = coef(fit_sim)[-1]
   RVR = vcovHC(fit_sim, type = 'HC0')[-1,-1]

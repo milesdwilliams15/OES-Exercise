@@ -57,20 +57,15 @@ na.omit(df) %>%
 # Analysis
 Y = log(df$Yc)
 Z = df$Zdesign
-X = data.matrix(df %>% select(contains('X'), - X2, - X3, -contains('Grp')))
-vars = matrix(NA,ncol=3,nrow=ncol(X))
-for(i in 1:ncol(X)){
-  corr = cor(na.omit(data.frame(Y,X[,i])))[1,2]
-  vars[i,] = c(i,corr,NA)
-}
-vars[,3] = rank(abs(vars[,2]))
-use_vars = which(vars[,3]==14)
-newX = X[,c(use_vars)]
+X = with(
+  df,
+  X4 - ave(X4,by=b)
+)
 block = as.factor(df$b)
 
 
   # Estimate ATE for Yc
-mod = lm(Y ~ Z*newX + block)
+mod = lm(Y ~ Z*X + block)
 
   # Estimate
 ATE = coef(mod)['Z']
@@ -83,6 +78,7 @@ t_value = ATE/SE
 
   # p-value
 t_sim = c()
+set.seed(1234567)
 for(i in 1:10000){
   Znew = c(df %>%
     group_by(b) %>%
@@ -97,48 +93,42 @@ for(i in 1:10000){
 p_left = mean(t_sim <= t_value,na.rm=T)
 p_right = mean(t_sim >= t_value,na.rm=T)
 p_value = min(2*min(p_left,p_right),1)
-
+mean(abs(t_sim)>= abs(t_value))
+p_value
 # Summary
 out_c = c(ATE,SE,t_value,p_value)
-names(out_c) = c("ATE","SE","t-value","p-value")
+names(out_c) = c("ATE","SE","t.value","p.value")
 out_c
 
 
 # Estimate ATE for Yb
 Y = df$Yb
 Z = df$Zdesign
-X = data.matrix(df %>% select(contains('X'), - X2, - X3, -contains('Grp')))
-vars = matrix(NA,ncol=3,nrow=ncol(X))
-for(i in 1:ncol(X)){
-  corr = cor(na.omit(data.frame(Y,X[,i])))[1,2]
-  vars[i,] = c(i,corr,NA)
-}
-vars[,3] = rank(abs(vars[,2]))
-use_vars = which(vars[,3]==14)
-newX = X[,c(use_vars)]
+X = df$X4 - with(df,ave(X4,b))
 block = as.factor(df$b)
 
 # Estimate ATE for Yc
-mod = lm(Y ~ Z*newX + block)
+mod = lm(Y ~ Z*X + block)
 
 # Estimate
 ATE = coef(mod)['Z']
 
 # SE
-SE = sqrt(diag(sandwich::vcovHC(mod,type="HC2")))['Z']
+SE = sqrt(diag(BMlmSE(mod)$vcov))['Z']
 
 # t-value
 t_value = ATE/SE
 
 # p-value
 t_sim = c()
+set.seed(1234567)
 for(i in 1:10000){
   Znew = c(df %>%
              group_by(b) %>%
              mutate(newid = sample(min(id):max(id),size=n())) %>%
              ungroup() %>%
              transmute(Znew = Zdesign[newid]))$Znew
-  modnew = lm(Y ~ Znew*newX + block)
+  modnew = lm(Y ~ Znew*X + block)
   ATEnew = coef(modnew)['Znew']
   SEnew = sqrt(diag(sandwich::vcovHC(modnew,type="HC2")))['Znew']
   t_sim[i] = ATEnew/SEnew
@@ -149,5 +139,39 @@ p_value = min(2*min(p_left,p_right),1)
 
 # Summary
 out_b = c(ATE,SE,t_value,p_value)
-names(out_b) = c("ATE","SE","t-value","p-value")
+names(out_b) = c("ATE","SE","t.value","p.value")
 out_b
+
+# Create Table 1
+library(kableExtra)
+
+data.frame(rbind(out_c,out_b)) %>%
+  mutate_all(function(x) round(x,3)) %>%
+  add_column(Outcome = c("Continuous (ln)","Binary"),.before=T) %>%
+  rename("t-statistic"=t.value,"p-value"=p.value) %>%
+  kable(
+    "latex",
+    align="center",
+    caption="OLS estimates of treatment effects",
+    row.names=F,
+    booktabs=T
+  ) 
+
+data.frame(rbind(out_c,out_b)) %>%
+  add_column(Outcome=c("Continuous (ln)","Binary")) %>%
+  ggplot(aes(Outcome,ATE)) +
+  geom_point() +
+  geom_errorbar(
+    aes(ymin=ATE-1.96*SE,
+        ymax=ATE+1.96*SE),
+    width=0
+  ) +
+  geom_hline(yintercept=0,linetype=2) +
+  theme_classic() +
+  labs(y="ATE\n(with 95% Confidence Intervals)") +
+  theme(
+    text = element_text(family='serif'),
+    axis.text = element_text(color="black"),
+    axis.title = element_text(size=8)
+  ) + 
+  ggsave('coefplot.pdf',units='in',height=2,width=4)
