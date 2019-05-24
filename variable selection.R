@@ -1,7 +1,35 @@
 
-# Use elastic net for variable selection #
-##########################################
+# Variable Selection #
+######################
 library(tidyverse)
+
+## Which covariate is most correlated with outcomes?
+mf1 = model.frame(Yc ~ ., df %>%
+                    select(
+                      - X2,
+                      -X3,
+                      -X8,
+                      -X11,
+                      -X19,
+                      -Yb,
+                      -Zdesign,
+                      -b
+                    ))
+mf2 = model.frame(Yb ~ ., df %>%
+                    select(
+                      - X2,
+                      -X3,
+                      -X8,
+                      -X11,
+                      -X19,
+                      -Yc,
+                      -Zdesign,
+                      -b
+                    ))
+sort(abs(cor(mf1)['Yc',]))[ncol(mf1)-1] # X4 most strongly correlated.
+sort(abs(cor(mf2)['Yb',]))[ncol(mf2)-1] # X4 most strongly correlated.
+
+# Use lasso to double check:
 library(glmnet)
 newdata = df %>%
   ungroup() %>%

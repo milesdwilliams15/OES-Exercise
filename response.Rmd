@@ -1,7 +1,7 @@
 ---
 title: "An Exercise in Data Analysis and Statistical Inference"
 author: "Miles D. Williams"
-date: "May 20, 2019"
+date: "May 24, 2019"
 output: 
   pdf_document: 
     number_sections: yes

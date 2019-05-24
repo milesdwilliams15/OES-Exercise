@@ -24,10 +24,8 @@ df = df %>%
   mutate_at(
     vars(contains('X')),
     function(x) replace_na(x,mean(x,na.rm=T))
-  ) 
-
-
-
+  ) %>%
+  ungroup()
 
 # Choice of method
 
@@ -47,13 +45,9 @@ na.omit(df) %>%
 sum(df$Zdesign)>=20 # TRUE
 
 ## How many covariates can I include in X? No more than:
-sum(na.omit(df)$Zdesign)/20 # 1.25 (1 with rounding)
-
-## Which covariate to include in X? The one that best predicts 
-## the outcome:
-na.omit(df) %>%
-  map(~ cor(Yc,))
-
+df %>% filter(is.na(Yc)==F) %>% summarize(M.20 = sum(Zdesign)/20) # 1.6 
+df %>% filter(is.na(Yb)==F) %>% summarize(M.20 = sum(Zdesign)/20) # 1.6
+                                          
 # Analysis
 Y = log(df$Yc)
 Z = df$Zdesign
@@ -95,6 +89,7 @@ p_right = mean(t_sim >= t_value,na.rm=T)
 p_value = min(2*min(p_left,p_right),1)
 mean(abs(t_sim)>= abs(t_value))
 p_value
+
 # Summary
 out_c = c(ATE,SE,t_value,p_value)
 names(out_c) = c("ATE","SE","t.value","p.value")
